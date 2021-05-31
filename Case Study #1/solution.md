@@ -213,3 +213,43 @@
 | B           | 2021-01-09T00:00:00.000Z | 2021-01-04T00:00:00.000Z | 1          | sushi        | 1   |
 
 ---
+
+**Query #8: What is the total items and amount spent for each member before they became a member?**
+
+    with t1 as (
+    SELECT
+    m.customer_id,
+    m.join_date,
+    s.order_date,
+    s.product_id,
+    me.product_name,
+    me.price,
+    RANK() OVER(PARTITION BY m.customer_id ORDER BY order_date DESC) as rk
+    FROM 
+    members m
+    JOIN
+    sales s
+    ON 
+    m.customer_id = s.customer_id
+    JOIN
+    menu me
+    ON
+    s.product_id = me.product_id
+    WHERE s.order_date < m.join_date
+    GROUP BY 1,2,3,4,5,6
+    ORDER BY 1
+    )
+    SELECT 
+    customer_id,
+    COUNT(*) as total_items,
+    SUM(price) as amount_spent
+    FROM t1 
+    WHERE rk = 1
+    GROUP BY 1;
+
+| customer_id | total_items | amount_spent |
+| ----------- | ----------- | ------------ |
+| A           | 2           | 25           |
+| B           | 1           | 10           |
+
+---
