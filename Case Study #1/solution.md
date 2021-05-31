@@ -53,7 +53,7 @@
 
 ---
 
-**Query #1**
+**Query #1: What is the total amount each customer spent at the restaurant?**
 
     SELECT
     s.customer_id,
@@ -75,9 +75,8 @@
 
 ---
 
-[View on DB Fiddle](https://www.db-fiddle.com/f/2rM8RAnq7h5LLDTzZiRWcd/18)
 
-**Query #2**
+**Query #2: How many days has each customer visited the restaurant?**
 
     SELECT
     s.customer_id,
@@ -96,4 +95,121 @@
 
 ---
 
-[View on DB Fiddle](https://www.db-fiddle.com/f/2rM8RAnq7h5LLDTzZiRWcd/18)
+
+**Query #4: What is the most purchased item on the menu and how many times was it purchased by all customers?**
+
+    SELECT
+    s.product_id,
+    m.product_name,
+    COUNT(*) as count
+    FROM
+    sales s
+    JOIN 
+    menu m
+    ON s.product_id = m.product_id
+    GROUP BY 1, 2
+    ORDER BY 3 DESC
+    LIMIT 1
+    ;
+
+| product_id | product_name | count |
+| ---------- | ------------ | ----- |
+| 3          | ramen        | 8     |
+
+---
+
+
+**Query #5: Which item was the most popular for each customer?**
+
+    SELECT
+    s.customer_id,
+    m.product_name,
+    COUNT(*) as count
+    FROM
+    sales s
+    JOIN 
+    menu m
+    ON
+    s.product_id = m.product_id
+    GROUP BY 1,2
+    ORDER BY 1,2
+    ;
+
+| customer_id | product_name | count |
+| ----------- | ------------ | ----- |
+| A           | curry        | 2     |
+| A           | ramen        | 3     |
+| A           | sushi        | 1     |
+| B           | curry        | 2     |
+| B           | ramen        | 2     |
+| B           | sushi        | 2     |
+| C           | ramen        | 3     |
+
+---
+
+**Query #6: Which item was purchased first by the customer after they became a member?**
+
+    with t1 as (
+    SELECT
+    m.customer_id,
+    m.join_date,
+    s.order_date,
+    s.product_id,
+    me.product_name,
+    ROW_NUMBER() OVER(PARTITION BY m.customer_id ORDER BY order_date) as rn
+    FROM 
+    members m
+    JOIN
+    sales s
+    ON 
+    m.customer_id = s.customer_id
+    JOIN
+    menu me
+    ON
+    s.product_id = me.product_id
+    WHERE s.order_date > m.join_date
+    GROUP BY 1,2,3,4,5
+    ORDER BY 1
+    )
+    SELECT * FROM t1 WHERE rn = 1;
+
+| customer_id | join_date                | order_date               | product_id | product_name | rn  |
+| ----------- | ------------------------ | ------------------------ | ---------- | ------------ | --- |
+| A           | 2021-01-07T00:00:00.000Z | 2021-01-10T00:00:00.000Z | 3          | ramen        | 1   |
+| B           | 2021-01-09T00:00:00.000Z | 2021-01-11T00:00:00.000Z | 1          | sushi        | 1   |
+
+---
+
+**Query #7: Which item was purchased just before the customer became a member?**
+
+    with t1 as (
+    SELECT
+    m.customer_id,
+    m.join_date,
+    s.order_date,
+    s.product_id,
+    me.product_name,
+    RANK() OVER(PARTITION BY m.customer_id ORDER BY order_date DESC) as rk
+    FROM 
+    members m
+    JOIN
+    sales s
+    ON 
+    m.customer_id = s.customer_id
+    JOIN
+    menu me
+    ON
+    s.product_id = me.product_id
+    WHERE s.order_date < m.join_date
+    GROUP BY 1,2,3,4,5
+    ORDER BY 1
+    )
+    SELECT * FROM t1 WHERE rk = 1;
+
+| customer_id | join_date                | order_date               | product_id | product_name | rk  |
+| ----------- | ------------------------ | ------------------------ | ---------- | ------------ | --- |
+| A           | 2021-01-07T00:00:00.000Z | 2021-01-01T00:00:00.000Z | 1          | sushi        | 1   |
+| A           | 2021-01-07T00:00:00.000Z | 2021-01-01T00:00:00.000Z | 2          | curry        | 1   |
+| B           | 2021-01-09T00:00:00.000Z | 2021-01-04T00:00:00.000Z | 1          | sushi        | 1   |
+
+---
