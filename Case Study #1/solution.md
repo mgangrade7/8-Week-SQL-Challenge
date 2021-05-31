@@ -95,6 +95,35 @@
 
 ---
 
+**Query #3: What was the first item from the menu purchased by each customer?**
+
+    WITH t1 as (
+    SELECT
+    s.customer_id,
+    s.order_date,
+    m.product_name,
+    ROW_NUMBER() OVER (PARTITION BY s.customer_id ORDER BY order_date, s.product_id) as rn
+    FROM
+    sales s
+    JOIN 
+    menu m
+    ON
+    s.product_id = m.product_id
+    )
+    SELECT 
+    customer_id,
+    product_name
+    FROM 
+    t1
+    WHERE rn = 1;
+
+| customer_id | product_name |
+| ----------- | ------------ |
+| A           | sushi        |
+| B           | curry        |
+| C           | ramen        |
+
+---
 
 **Query #4: What is the most purchased item on the menu and how many times was it purchased by all customers?**
 
