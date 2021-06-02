@@ -133,3 +133,16 @@
 | 14    |
 
 ---
+
+**Query #2 : How many unique customer orders were made?**
+
+    SELECT
+    	COUNT(DISTINCT customer_id)
+    FROM
+    	pizza_runner.customer_orders;
+
+| count |
+| ----- |
+| 5     |
+
+---
