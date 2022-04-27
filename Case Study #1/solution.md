@@ -216,3 +216,4 @@ select *,
            when is_customer is true then rank() over (partition by customer_id, is_customer order by order_date)
            else null end as ranking
 from t1
+
