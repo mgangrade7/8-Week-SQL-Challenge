@@ -61,7 +61,7 @@
 	select s.customer_id,
 	       sum(m.price) as total_amount_spent
 	from dannys_diner.sales s
-	         join menu m on s.product_id = m.product_id
+	         join dannys_diner.menu m on s.product_id = m.product_id
 	group by 1
 	order by 1;
 | customer\_id | total\_amount\_spent |
@@ -318,3 +318,6 @@
 | C | 2021-01-01 | ramen | 12 | false | NULL |
 | C | 2021-01-01 | ramen | 12 | false | NULL |
 | C | 2021-01-07 | ramen | 12 | false | NULL |
+
+
+DB Fiddle: https://www.db-fiddle.com/f/2rM8RAnq7h5LLDTzZiRWcd/138
