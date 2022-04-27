@@ -64,6 +64,11 @@
 	         join menu m on s.product_id = m.product_id
 	group by 1
 	order by 1;
+| customer\_id | total\_amount\_spent |
+| :--- | :--- |
+| A | 76 |
+| B | 74 |
+| C | 36 |
 
 
 **2.How many days has each customer visited the restaurant?**
@@ -73,6 +78,12 @@
 	from dannys_diner.sales
 	group by  1
 	order by  1;
+| customer\_id | days\_customer\_visited |
+| :--- | :--- |
+| A | 4 |
+| B | 6 |
+| C | 2 |
+
 
 **3. What was the first item from the menu purchased by each customer?**
 
@@ -86,6 +97,13 @@
 	select customer_id, product_name
 	from t1
 	where rn = 1;
+	
+| customer\_id | product\_name |
+| :--- | :--- |
+| A | sushi |
+| B | curry |
+| C | ramen |
+
 
 **4. What is the most purchased item on the menu and how many times was it purchased by all customers?**
 
@@ -97,6 +115,10 @@
 	group by 1, 2
 	order by 3 desc
 	limit 1;
+| product\_id | product\_name | most\_perchased\_item |
+| :--- | :--- | :--- |
+| 3 | ramen | 8 |
+
 
 **5. Which item was the most popular for each customer?**
 
@@ -112,6 +134,14 @@
 	select customer_id, product_name, purchase_time
 	from t2
 	where rk = 1;
+| customer\_id | product\_name | purchase\_time |
+| :--- | :--- | :--- |
+| A | ramen | 3 |
+| B | ramen | 2 |
+| B | sushi | 2 |
+| B | curry | 2 |
+| C | ramen | 3 |
+
 
 **6. Which item was purchased first by the customer after they became a member?**
 
@@ -128,6 +158,11 @@
 	select customer_id, order_date, product_name
 	from t2
 	where rn = 1;
+| customer\_id | order\_date | product\_name |
+| :--- | :--- | :--- |
+| A | 2021-01-07 | curry |
+| B | 2021-01-11 | sushi |
+
 
 **7.Which item was purchased just before the customer became a member?**
 
@@ -147,6 +182,11 @@
 	select customer_id, product_name
 	from t2
 	where rn = 1;
+| customer\_id | product\_name |
+| :--- | :--- |
+| A | curry |
+| B | sushi |
+
 
 **8. What is the total items and amount spent for each member before they became a member?**
 
@@ -168,6 +208,11 @@
 	from t2
 	group by 1
 	order by 1;
+| customer\_id | amount\_spent | total\_item |
+| :--- | :--- | :--- |
+| A | 25 | 2 |
+| B | 40 | 3 |
+
 
 **9. If each $1 spent equates to 10 points and sushi has a 2x points multiplier - how many points would each customer have?**
 
@@ -187,6 +232,11 @@
 	from t2
 	group by 1
 	order by 1;
+| customer\_id | total\_points |
+| :--- | :--- |
+| A | 510 |
+| B | 440 |
+
 
 **10. In the first week after a customer joins the program (including their join date) they earn 2x points on all items, not just sushi - how many points do customer A and B have at the end of January?**
 
@@ -198,6 +248,11 @@
 	where s.order_date >= m2.join_date
 	group by 1
 	order by 1;
+| customer\_id | total\_points |
+| :--- | :--- |
+| A | 1020 |
+| B | 440 |
+
 
 **Bonus Questions**
 **Join All The Things**
@@ -210,7 +265,25 @@
 		from dannys_diner.sales s
 		         left join dannys_diner.menu m on s.product_id = m.product_id
 		         left join dannys_diner.members m2 on s.customer_id = m2.customer_id
-		order by customer_id, order_date, product_name
+		order by customer_id, order_date, product_name;
+| customer\_id | order\_date | product\_name | price | is\_customer |
+| :--- | :--- | :--- | :--- | :--- |
+| A | 2021-01-01 | curry | 15 | false |
+| A | 2021-01-01 | sushi | 10 | false |
+| A | 2021-01-07 | curry | 15 | true |
+| A | 2021-01-10 | ramen | 12 | true |
+| A | 2021-01-11 | ramen | 12 | true |
+| A | 2021-01-11 | ramen | 12 | true |
+| B | 2021-01-01 | curry | 15 | false |
+| B | 2021-01-02 | curry | 15 | false |
+| B | 2021-01-04 | sushi | 10 | false |
+| B | 2021-01-11 | sushi | 10 | true |
+| B | 2021-01-16 | ramen | 12 | true |
+| B | 2021-02-01 | ramen | 12 | true |
+| C | 2021-01-01 | ramen | 12 | false |
+| C | 2021-01-01 | ramen | 12 | false |
+| C | 2021-01-07 | ramen | 12 | false |
+
 
 **Rank All The Things**
 
@@ -227,5 +300,21 @@
 	       case
 	           when is_customer is true then rank() over (partition by customer_id, is_customer order by order_date)
 	           else null end as ranking
-	from t1
-
+	from t1;
+| customer\_id | order\_date | product\_name | price | is\_customer | ranking |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| A | 2021-01-01 | curry | 15 | false | NULL |
+| A | 2021-01-01 | sushi | 10 | false | NULL |
+| A | 2021-01-07 | curry | 15 | true | 1 |
+| A | 2021-01-10 | ramen | 12 | true | 2 |
+| A | 2021-01-11 | ramen | 12 | true | 3 |
+| A | 2021-01-11 | ramen | 12 | true | 3 |
+| B | 2021-01-01 | curry | 15 | false | NULL |
+| B | 2021-01-02 | curry | 15 | false | NULL |
+| B | 2021-01-04 | sushi | 10 | false | NULL |
+| B | 2021-01-11 | sushi | 10 | true | 1 |
+| B | 2021-01-16 | ramen | 12 | true | 2 |
+| B | 2021-02-01 | ramen | 12 | true | 3 |
+| C | 2021-01-01 | ramen | 12 | false | NULL |
+| C | 2021-01-01 | ramen | 12 | false | NULL |
+| C | 2021-01-07 | ramen | 12 | false | NULL |
