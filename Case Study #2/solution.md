@@ -1,3 +1,4 @@
+
 **Schema (PostgreSQL v13)**
 
     CREATE SCHEMA pizza_runner;
@@ -117,32 +118,135 @@
       (12, 'Tomato Sauce');
 
 ---
+**Clear the data**
+
+	-- Update 1
+	update pizza_runner.customer_orders
+	set exclusions = null
+	where exclusions in ('null','');
+	
+	-- Update 2
+	update pizza_runner.customer_orders
+	set extras = null
+	where extras in ('null','');
+
+	-- Update 3
+	update pizza_runner.runner_orders
+	set pickup_time = null
+	where pickup_time in ('null','');
+	
+	-- Update 4
+	update pizza_runner.runner_orders
+	set cancellation = null
+	where cancellation in ('null','');
+	
+	-- Update 5
+	update pizza_runner.runner_orders
+	set distance = null
+	where distance in ('null','');
+
+	-- Update 6
+	update pizza_runner.runner_orders
+	set duration = null
+	where duration in ('null','');
+
+	-- Update 7
+	alter  table pizza_runner.runner_orders add column duration_clean numeric;
+	alter  table pizza_runner.runner_orders add column distance_clean numeric;
+
+	-- Update 8
+	update pizza_runner.runner_orders
+	set distance_clean = NULLIF(regexp_replace(distance, '[^\.\d]','','g'), '')::numeric
+	where  1=1;
+
+	-- Update 9
+	update pizza_runner.runner_orders
+	set duration_clean = NULLIF(regexp_replace(duration, '\D','','g'), '')::numeric
+	where  1=1;
+---
 
 **A. Pizza Metrics**
 ---
 
-**Query #1 : How many pizzas were ordered?**
-
-    SELECT
-    	COUNT(pizza_id)
-    FROM
-    	pizza_runner.customer_orders;
-
-| count |
-| ----- |
-| 14    |
-
----
-
-**Query #2 : How many unique customer orders were made?**
-
-    SELECT
-    	COUNT(DISTINCT customer_id)
-    FROM
-    	pizza_runner.customer_orders;
-
-| count |
-| ----- |
-| 5     |
-
----
+	-- 1. How many pizzas were ordered?
+	select count(*) as pizza_orders  
+	from pizza_runner.customer_orders;  
+	
+	  
+	-- 2. How many unique customer orders were made?  
+	select count(distinct customer_id) as unique_customer_orders  
+	from pizza_runner.customer_orders;  
+	  
+	-- 3. How many successful orders were delivered by each runner?  
+	select runner_id, count(*) as number_order_deliver  
+	from pizza_runner.runner_orders  
+	where cancellation is null  
+	group by 1  
+	order by 1;  
+	  
+	-- 4. How many of each type of pizza was delivered?  
+	with t1 as (select co.order_id, pizza_id, cancellation  
+	  from pizza_runner.customer_orders co  
+	                     left join pizza_runner.runner_orders ro on co.order_id = ro.order_id)  
+	select pizza_id, count(*) as number_of_order  
+	from t1  
+	where cancellation is null  
+	group by 1  
+	order by 1;  
+	  
+	-- 5. How many Vegetarian and Meatlovers were ordered by each customer?  
+	with t1 as (select co.order_id, co.customer_id, co.pizza_id, pn.pizza_name  
+	  from pizza_runner.customer_orders co  
+	                     join pizza_runner.pizza_names pn on co.pizza_id = pn.pizza_id)  
+	select customer_id, pizza_name, count(*) as number_of_order  
+	from t1  
+	group by 1, 2  
+	order by 1, 2;  
+	  
+	-- 6. What was the maximum number of pizzas delivered in a single order?  
+	with t1 as (select co.order_id, pizza_id, cancellation  
+	  from pizza_runner.customer_orders co  
+	                     left join pizza_runner.runner_orders ro on co.order_id = ro.order_id)  
+	select order_id, count(*) as number_of_pizza_order  
+	from t1  
+	where cancellation is null  
+	group by 1  
+	order by count(*) desc  
+	limit 1 ;  
+	  
+	-- 7. For each customer, how many delivered pizzas had at least 1 change and how many had no changes?  
+	with t1 as (select co.order_id, co.customer_id, pizza_id, co.exclusions, co.extras, cancellation  
+	  from pizza_runner.customer_orders co  
+	                     left join pizza_runner.runner_orders ro on co.order_id = ro.order_id)  
+	select customer_id,  
+	  count(*)                                                                        as total_order,  
+	  sum(case when (exclusions is not null or extras is not null) then 1 else 0 end) as atleast_one_change,  
+	  sum(case when (exclusions is null and extras is null) then 1 else 0 end)        as no_change  
+	from t1  
+	where cancellation is null  
+	group by 1  
+	order by 1;  
+	  
+	-- 8. How many pizzas were delivered that had both exclusions and extras?  
+	with t1 as (select co.order_id, co.customer_id, pizza_id, co.exclusions, co.extras, cancellation  
+	  from pizza_runner.customer_orders co  
+	                     left join pizza_runner.runner_orders ro on co.order_id = ro.order_id)  
+	select sum(case when (exclusions is not null and extras is not null) then 1 else 0 end) as have_both_exclusions_and_extras  
+	from t1  
+	where cancellation is null  
+	order by 1;  
+	  
+	-- 9. What was the total volume of pizzas ordered for each hour of the day?  
+	select order_time::date              as date,  
+	  extract(hour from order_time) as hour,  
+	  count(*)                      as pizza_orders  
+	from pizza_runner.customer_orders  
+	group by 1, 2  
+	order by 1, 2;  
+	  
+	-- 10. What was the volume of orders for each day of the week?  
+	select order_time::date as date,  
+	  count(*)         as pizza_orders  
+	from pizza_runner.customer_orders  
+	group by 1  
+	order by 1;
