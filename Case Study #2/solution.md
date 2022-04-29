@@ -250,3 +250,62 @@
 	from pizza_runner.customer_orders  
 	group by 1  
 	order by 1;
+---
+
+**B. Runner and Customer Experience**
+---
+	-- 1. How many runners signed up for each 1 week period? (i.e. week starts 2021-01-01)  
+	select date_trunc('week', registration_date)::date as week_start_date,  
+	  EXTRACT('week' FROM registration_date)         week_number,  
+	  count(*)                                    as number_of_runners_signup  
+	from pizza_runner.runners  
+	group by 1, 2  
+	order by 1;  
+	  
+	-- 2. What was the average time in minutes it took for each runner to arrive at the Pizza Runner HQ to pickup the order?  
+	select avg(ro.pickup_time::timestamp - co.order_time) as average_time_to_pickup  
+	from pizza_runner.customer_orders co  
+	         join pizza_runner.runner_orders ro  
+	              on co.order_id = ro.order_id  
+	where cancellation is null;  
+	  
+	-- 3. Is there any relationship between the number of pizzas and how long the order takes to prepare?  
+	select co.order_id,  
+	  count(pizza_id)                                as number_of_pizza,  
+	  avg(ro.pickup_time::timestamp - co.order_time) as avg_time_to_prepare  
+	from pizza_runner.customer_orders co  
+	         join pizza_runner.runner_orders ro  
+	              on co.order_id = ro.order_id  
+	where cancellation is null  
+	group by 1;  
+	  
+	-- Yes..usually one pizza takes average 10 minutes to prepare  
+	  
+	-- 4. What was the average distance travelled for each customer?  
+	select avg(distance_clean) as avg_distance_travelled  
+	from pizza_runner.runner_orders ro;  
+	  
+	-- 5. What was the difference between the longest and shortest delivery times for all orders?  
+	select max(duration_clean) - min(duration_clean) as difference  
+	from pizza_runner.runner_orders ro;  
+	  
+	-- 6. What was the average speed for each runner for each delivery and do you notice any trend for these values?  
+	select sum(distance_clean) / sum(duration_clean) as avg_speed_in_km_per_min  
+	from pizza_runner.runner_orders ro  
+	where cancellation is null;  
+	  
+	-- 7. What is the successful delivery percentage for each runner?  
+	with t1 as (select runner_id, count(*) as number_of_order_per_user  
+	            from pizza_runner.runner_orders ro  
+	            where cancellation is null  
+	 group by 1),  
+	  t2 as (select count(*) as total_order  
+	            from pizza_runner.runner_orders ro  
+	            where cancellation is null)  
+	select runner_id,  
+	  total_order,  
+	  number_of_order_per_user,  
+	  (number_of_order_per_user::numeric / total_order::numeric) * 100 as pct  
+	from t1,  
+	  t2  
+	order by 1;
