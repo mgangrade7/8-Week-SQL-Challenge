@@ -348,7 +348,7 @@
 	values (2, 11);  
 	insert into pizza_runner.pizza_recipes_norm  
 	values (2, 12);  
-	  
+  ---
 	-- What are the standard ingredients for each pizza?  
 	with t1 as (select pn.pizza_id, pn.pizza_name, pt.topping_id, pt.topping_name  
 	  from pizza_runner.pizza_names pn  
@@ -363,8 +363,6 @@
 	  array_to_string(array_agg(topping_name), ',') as toppings_name  
 	FROM t1  
 	group by 1, 2;  
-	  
-	  
 	  
 	-- What was the most commonly added extra?  
 	with t1 as (select trim(regexp_split_to_table(extras, ','))::numeric as extras_id,  
