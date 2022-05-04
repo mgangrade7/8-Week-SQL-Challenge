@@ -385,3 +385,93 @@
 	         join pizza_runner.pizza_toppings pt  
 	              on t1.exclusions_id = pt.topping_id  
 	order by 1;
+---
+
+**D. Pricing and Ratings**
+---
+	-- 1. If a Meat Lovers pizza costs $12 and Vegetarian costs $10 and there were no charges for changes -  
+	--     how much money has Pizza Runner made so far if there are no delivery fees?  
+	select sum(case when pizza_id = 1 then 12 else 10 end) as total_earning  
+	from pizza_runner.customer_orders co  
+	         join pizza_runner.runner_orders ro  
+	              on co.order_id = ro.order_id  
+	where cancellation is null;  
+	  
+	-- 2. What if there was an additional $1 charge for any pizza extras?  
+	-- Add cheese is $1 extra  
+	select sum(case when pizza_id = 1 then 12 else 10 end)                                                              as total_earning,  
+	  sum(length(extras) - length(replace(extras, ',', '')) + 1)                                                   as extras_earning,  
+	  sum(case when pizza_id = 1 then 12 else 10 end) +  
+	       sum(length(extras) - length(replace(extras, ',', '')) + 1)                                                   as grand_total  
+	from pizza_runner.customer_orders co  
+	         join pizza_runner.runner_orders ro  
+	              on co.order_id = ro.order_id  
+	where cancellation is null;  
+	  
+	-- 3. The Pizza Runner team now wants to add an additional ratings system that allows customers to rate their runner,  
+	--     how would you design an additional table for this new dataset - generate a schema for this new table and insert your  
+	--     own data for ratings for each successful customer order between 1 to 5.  
+	create table pizza_runner.rating  
+	(  
+	    order_id integer,  
+	  runner_id integer,  
+	  rating integer  
+	);  
+	  
+	insert into pizza_runner.rating  
+	values (1, 1, 3);  
+	insert into pizza_runner.rating  
+	values (2, 1, 4);  
+	insert into pizza_runner.rating  
+	values (3, 1, 1);  
+	insert into pizza_runner.rating  
+	values (4, 2, 5);  
+	insert into pizza_runner.rating  
+	values (5, 3, 2);  
+	insert into pizza_runner.rating  
+	values (7, 2, 5);  
+	insert into pizza_runner.rating  
+	values (8, 2, 3);  
+	insert into pizza_runner.rating  
+	values (10, 1, 1);  
+	  
+	-- 4. Using your newly generated table - can you join all of the information together to form a table which has the  
+	--     following information for successful deliveries?  
+	-- customer_id  
+	-- order_id  
+	-- runner_id  
+	-- rating  
+	-- order_time  
+	-- pickup_time  
+	-- Time between order and pickup  
+	-- Delivery duration  
+	-- Average speed  
+	-- Total number of pizzas  
+	select co.customer_id,  
+	  co.order_id,  
+	  ro.runner_id,  
+	  r.rating,  
+	  co.order_time,  
+	  ro.pickup_time,  
+	  ro.pickup_time::timestamp - co.order_time as time_between,  
+	  ro.duration_clean as delivery_duration,  
+	  ro.distance_clean / ro.duration_clean as speed_km_per_minute,  
+	  count(*)                                  as pizza_count  
+	from pizza_runner.customer_orders co  
+	         join pizza_runner.runner_orders ro on co.order_id = ro.order_id  
+	  join pizza_runner.rating r on ro.order_id = r.order_id and r.runner_id = ro.runner_id  
+	where ro.cancellation is null  
+	group by 1, 2, 3, 4, 5, 6, 7, 8, 9;  
+	  
+	-- 5. If a Meat Lovers pizza was $12 and Vegetarian $10 fixed prices with no cost for extras and each runner is paid $0.30  
+	-- per kilometre traveled - how much money does Pizza Runner have left over after these deliveries?  
+	with t1 as (select sum(case when pizza_id = 1 then 12 else 10 end) as total_earning  
+	            from pizza_runner.customer_orders co  
+	                     join pizza_runner.runner_orders ro  
+	                          on co.order_id = ro.order_id  
+	  where cancellation is null),  
+	  t2 as (select sum(ro.distance_clean * .30) as service_charge  
+	            from pizza_runner.runner_orders ro)  
+	select t1.total_earning - t2.service_charge as net_earning  
+	from t1,  
+	  t2;
