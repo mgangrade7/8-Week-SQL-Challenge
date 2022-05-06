@@ -475,3 +475,12 @@
 	select t1.total_earning - t2.service_charge as net_earning  
 	from t1,  
 	  t2;
+---
+
+**E. Bonus Questions**
+---
+	-- A new record got created in pizza_runner.pizza_names table;  
+	INSERT INTO pizza_runner.pizza_names VALUES (3,'Supreme');  
+	  
+	-- A new record got created in pizza_runner.pizza_recipes table;  
+	INSERT INTO pizza_runner.pizza_recipes VALUES (3, '1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12');
