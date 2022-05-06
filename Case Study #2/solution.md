@@ -313,78 +313,158 @@
 
 **C. Ingredient Optimisation**
 ---
-	create table pizza_runner.pizza_recipes_norm  
-	(  
-	    pizza_id integer,  
-	  toppings integer  
-	);  
-	  
-	insert into pizza_runner.pizza_recipes_norm  
-	values (1, 1);  
-	insert into pizza_runner.pizza_recipes_norm  
-	values (1, 2);  
-	insert into pizza_runner.pizza_recipes_norm  
-	values (1, 3);  
-	insert into pizza_runner.pizza_recipes_norm  
-	values (1, 4);  
-	insert into pizza_runner.pizza_recipes_norm  
-	values (1, 5);  
-	insert into pizza_runner.pizza_recipes_norm  
-	values (1, 6);  
-	insert into pizza_runner.pizza_recipes_norm  
-	values (1, 8);  
-	insert into pizza_runner.pizza_recipes_norm  
-	values (1, 10);  
-	  
-	insert into pizza_runner.pizza_recipes_norm  
-	values (2, 4);  
-	insert into pizza_runner.pizza_recipes_norm  
-	values (2, 6);  
-	insert into pizza_runner.pizza_recipes_norm  
-	values (2, 7);  
-	insert into pizza_runner.pizza_recipes_norm  
-	values (2, 9);  
-	insert into pizza_runner.pizza_recipes_norm  
-	values (2, 11);  
-	insert into pizza_runner.pizza_recipes_norm  
-	values (2, 12);  
-  ---
 	-- What are the standard ingredients for each pizza?  
-	with t1 as (select pn.pizza_id, pn.pizza_name, pt.topping_id, pt.topping_name  
-	  from pizza_runner.pizza_names pn  
-	                     join pizza_runner.pizza_recipes_norm pr  
-	                          on pn.pizza_id = pr.pizza_id  
-	  join pizza_runner.pizza_toppings pt  
-	                          on pr.toppings = pt.topping_id  
-	  order by pn.pizza_id, pt.topping_id)  
-	SELECT pizza_id,  
-	  pizza_name,  
-	  array_to_string(array_agg(topping_id), ',')   as toppings_id,  
-	  array_to_string(array_agg(topping_name), ',') as toppings_name  
-	FROM t1  
-	group by 1, 2;  
+	with t1 as (select pizza_id,  
+	  trim(regexp_split_to_table(toppings, ','))::numeric as toppings_id  
+	            from pizza_runner.pizza_recipes  
+	            group by 1, 2),  
+	  t2 as (select t1.pizza_id,  
+	  t1.toppings_id,  
+	  pz.topping_name  
+	  from t1  
+	                     left join pizza_runner.pizza_toppings pz  
+	                               on t1.toppings_id = pz.topping_id  
+	  order by 1, 2, 3)  
+	select pizza_id, array_to_string(array_agg(topping_name), ',')  
+	from t2  
+	group by 1;  
 	  
 	-- What was the most commonly added extra?  
-	with t1 as (select trim(regexp_split_to_table(extras, ','))::numeric as extras_id,  
-	  count(*)                                          as number_of_times_added  
-	            from pizza_runner.customer_orders  
-	            group by 1)  
-	select extras_id, topping_name, number_of_times_added  
-	from t1  
-	         join pizza_runner.pizza_toppings pt  
-	              on t1.extras_id = pt.topping_id  
-	order by 1;  
+	with t1 as(  
+	select trim(regexp_split_to_table(extras, ','))::numeric as exteas_id, count(*) as number_of_times  
+	from pizza_runner.customer_orders  
+	where extras is not null  
+	group by 1  
+	  )  
+	select exteas_id, number_of_times, topping_name from t1  
+	             join  
+	  pizza_runner.pizza_toppings pt  
+	on t1.exteas_id = pt.topping_id  
+	order by 2 desc;  
 	  
 	-- What was the most common exclusion?  
-	with t1 as (select trim(regexp_split_to_table(exclusions, ','))::numeric as exclusions_id,  
-	  count(*)                                          as number_of_times_excluded  
+	with t1 as (select trim(regexp_split_to_table(exclusions, ','))::numeric as exclusions_id, count(*) as number_of_times  
 	            from pizza_runner.customer_orders  
-	            group by 1)  
-	select exclusions_id, topping_name, number_of_times_excluded  
+	            where exclusions is not null  
+	 group by 1)  
+	select exclusions_id, number_of_times, topping_name  
 	from t1  
-	         join pizza_runner.pizza_toppings pt  
-	              on t1.exclusions_id = pt.topping_id  
-	order by 1;
+	         join  
+	  pizza_runner.pizza_toppings pt  
+	     on t1.exclusions_id = pt.topping_id  
+	order by 2 desc;  
+	  
+	-- Generate an order item for each record in the customers_orders table in the format of one of the following:  
+	-- Meat Lovers  
+	-- Meat Lovers - Exclude Beef  
+	-- Meat Lovers - Extra Bacon  
+	-- Meat Lovers - Exclude Cheese, Bacon - Extra Mushroom, Peppers  
+	with t1 as (select order_id,  
+	  customer_id,  
+	  pizza_id,  
+	  extras,  
+	  trim(regexp_split_to_table(extras, ','))::numeric as extras_id  
+	            from pizza_runner.customer_orders  
+	            where extras is not null  
+	 group by 1, 2, 3, 4),  
+	  t2 as (select order_id, customer_id, pizza_id, extras, array_to_string(array_agg(topping_name), ',') as extras_name  
+	            from t1  
+	                     left join pizza_runner.pizza_toppings pt on t1.extras_id = pt.topping_id  
+	  group by 1, 2, 3, 4),  
+	  t3 as (select order_id,  
+	  customer_id,  
+	  pizza_id,  
+	  exclusions,  
+	  trim(regexp_split_to_table(exclusions, ','))::numeric as exclusions_id  
+	            from pizza_runner.customer_orders  
+	            where exclusions is not null  
+	 group by 1, 2, 3, 4),  
+	  t4 as (select order_id,  
+	  customer_id,  
+	  pizza_id,  
+	  exclusions,  
+	  array_to_string(array_agg(topping_name), ',') as exclusions_name  
+	            from t3  
+	                     left join pizza_runner.pizza_toppings pt on t3.exclusions_id = pt.topping_id  
+	  group by 1, 2, 3, 4)  
+	select co.order_id,  
+	  co.pizza_id,  
+	  pn.pizza_name,  
+	  'Extras : ' || coalesce(t2.extras_name, 'None')        as extras,  
+	  'Exclusions :' || coalesce(t4.exclusions_name, 'None') as exclusion  
+	from pizza_runner.customer_orders co  
+	         left join pizza_runner.pizza_names pn on co.pizza_id = pn.pizza_id  
+	  left join t2 on co.order_id = t2.order_id and co.pizza_id = t2.pizza_id and co.extras = t2.extras  
+	  left join t4 on co.order_id = t4.order_id and co.pizza_id = t4.pizza_id and co.exclusions = t4.exclusions  
+	order by 1, 2, 3;  
+	  
+	-- Generate an alphabetically ordered comma separated ingredient list for each pizza order from the customer_orders table  
+	-- and add a 2x in front of any relevant ingredients  
+	-- For example: "Meat Lovers: 2xBacon, Beef, ... , Salami"  
+	with t1 as (select pizza_id,  
+	  trim(regexp_split_to_table(toppings, ','))::numeric as toppings_id  
+	            from pizza_runner.pizza_recipes  
+	            order by 1),  
+	  t2 as (select order_id, customer_id, pizza_id, trim(regexp_split_to_table(extras, ','))::numeric as exteas_id  
+	            from pizza_runner.customer_orders  
+	            where extras is not null),  
+	  t3 as (select order_id,  
+	  customer_id,  
+	  pizza_id,  
+	  trim(regexp_split_to_table(exclusions, ','))::numeric as exclusions_id  
+	            from pizza_runner.customer_orders  
+	            where exclusions is not null),  
+	  t4 as (select order_id, customer_id, co.pizza_id, t1.toppings_id  
+	            from pizza_runner.customer_orders co  
+	                     left join t1 on co.pizza_id = t1.pizza_id  
+	  EXCEPT  
+	 select *  
+	  from t3  
+	            UNION ALL  
+	 select *  
+	  from t2),  
+	  t5 as (select order_id,  
+	  customer_id,  
+	  pizza_id,  
+	  toppings_id,  
+	  count(*)::text || 'x' || pt.topping_name as all_toppings  
+	            from t4  
+	                     left join pizza_runner.pizza_toppings pt on t4.toppings_id = pt.topping_id  
+	  group by 1, 2, 3, 4, pt.topping_name  
+	  order by 1, 2, 3, count(*))  
+	select order_id, customer_id, pizza_id, array_to_string(array_agg(all_toppings), ',')  
+	from t5  
+	group by 1, 2, 3;  
+	  
+	-- What is the total quantity of each ingredient used in all delivered pizzas sorted by most frequent first?  
+	with t1 as (select pizza_id,  
+	  trim(regexp_split_to_table(toppings, ','))::numeric as toppings_id  
+	            from pizza_runner.pizza_recipes  
+	            order by 1),  
+	  t2 as (select order_id, customer_id, pizza_id, trim(regexp_split_to_table(extras, ','))::numeric as exteas_id  
+	            from pizza_runner.customer_orders  
+	            where extras is not null),  
+	  t3 as (select order_id,  
+	  customer_id,  
+	  pizza_id,  
+	  trim(regexp_split_to_table(exclusions, ','))::numeric as exclusions_id  
+	            from pizza_runner.customer_orders  
+	            where exclusions is not null),  
+	  t4 as (select order_id, customer_id, co.pizza_id, t1.toppings_id  
+	            from pizza_runner.customer_orders co  
+	                     left join t1 on co.pizza_id = t1.pizza_id  
+	  EXCEPT  
+	 select *  
+	  from t3  
+	            UNION ALL  
+	 select *  
+	  from t2)  
+	select toppings_id, tn.topping_name, count(*) as count  
+	from t4  
+	         left join pizza_runner.pizza_toppings tn  
+	                   on t4.toppings_id = tn.topping_id  
+	group by 1, 2  
+	order by count(*) desc;
 ---
 
 **D. Pricing and Ratings**
