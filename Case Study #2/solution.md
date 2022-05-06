@@ -564,3 +564,5 @@
 	  
 	-- A new record got created in pizza_runner.pizza_recipes table;  
 	INSERT INTO pizza_runner.pizza_recipes VALUES (3, '1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12');
+
+DB Fiddle: https://www.db-fiddle.com/f/7VcQKQwsS3CTkGRFG7vu98/65
