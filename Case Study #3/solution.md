@@ -32,10 +32,12 @@
 ## B. Data Analysis Questions
 ---
 	-- How many customers has Foodie-Fi ever had?  
+	
 	select count(distinct s.customer_id)  
 	from foodie_fi.subscriptions s;  
 	  
 	-- What is the monthly distribution of trial plan start_date values for our dataset - use the start of the month as the group by value  
+	
 	select date_part('mon', s.start_date) as month, count(*)  
 	from foodie_fi.subscriptions s  
 	where s.plan_id = 0  
@@ -43,6 +45,7 @@
 	order by 1;  
 	  
 	-- What plan start_date values occur after the year 2020 for our dataset? Show the breakdown by count of events for each plan_name  
+	
 	select date_part('y', s.start_date) as year, s.plan_id, p.plan_name, count(*)  
 	from foodie_fi.subscriptions s  
 	 left join foodie_fi.plans p on s.plan_id = p.plan_id  
@@ -51,6 +54,7 @@
 	order by 2;  
 	  
 	-- What is the customer count and percentage of customers who have churned rounded to 1 decimal place?  
+	
 	select count(distinct s.customer_id)                                                                                 as customer_count,  
 	  sum(case when s.plan_id = 4 then 1 else 0 end)                                                                as churn_count,  
 	  100 * (sum(case when s.plan_id = 4 then 1 else 0 end) /  
@@ -58,6 +62,7 @@
 	from foodie_fi.subscriptions s;  
 	  
 	-- How many customers have churned straight after their initial free trial - what percentage is this rounded to the nearest whole number?  
+	
 	with t1 as (select customer_id,  
 	  plan_id,  
 	  start_date,  
@@ -74,6 +79,7 @@
 	group by churn_count  
 	  
 	-- What is the number and percentage of customer plans after their initial free trial?  
+	
 	with t1 as (select customer_id,  
 	  plan_id,  
 	  start_date,  
@@ -91,6 +97,7 @@
 	  
 	  
 	-- What is the customer count and percentage breakdown of all 5 plan_name values at 2020-12-31?  
+	
 	with t1 as (select customer_id,  
 	  plan_id,  
 	  start_date,  
@@ -113,5 +120,56 @@
 	  and start_date BETWEEN '2020-01-01' and '2020-12-31';  
 	  
 	-- How many days on average does it take for a customer to an annual plan from the day they join Foodie-Fi?  
+	
+		with t1 as (select s.customer_id,  
+	 s.start_date as start_date_trial_plan  
+	            from foodie_fi.subscriptions s  
+	 where plan_id = 0),  
+	  t2 as (select s.customer_id,  
+	 s.start_date as start_date_annual_plan  
+	            from foodie_fi.subscriptions s  
+	 where plan_id = 3  
+	  and s.customer_id in (select distinct customer_id from t1))  
+	select round(avg(start_date_annual_plan - start_date_trial_plan))  
+	from t2  
+	         left join t1 on t2.customer_id = t1.customer_id;
+	         
 	-- Can you further breakdown this average value into 30 day periods (i.e. 0-30 days, 31-60 days etc)  
+	
+	with t1 as (select s.customer_id,  
+	 s.start_date as start_date_trial_plan  
+	            from foodie_fi.subscriptions s  
+	 where plan_id = 0),  
+	  t2 as (select s.customer_id,  
+	 s.start_date as start_date_annual_plan  
+	            from foodie_fi.subscriptions s  
+	 where plan_id = 3  
+	  and s.customer_id in (select distinct customer_id from t1))  
+	select case  
+	 when (start_date_annual_plan - start_date_trial_plan) <= 50 then '1-50'  
+	  when (start_date_annual_plan - start_date_trial_plan) BETWEEN 51 and 100 then '51-100'  
+	  when (start_date_annual_plan - start_date_trial_plan) BETWEEN 101 and 200 then '100-200'  
+	  when (start_date_annual_plan - start_date_trial_plan) BETWEEN 201 and 400 then '200-400'  
+	  else 'More than 401'  
+	  end  as range,  
+	  sum(case  
+	 when (start_date_annual_plan - start_date_trial_plan) <= 50 then 1  
+	  when (start_date_annual_plan - start_date_trial_plan) BETWEEN 51 and 100 then 1  
+	  when (start_date_annual_plan - start_date_trial_plan) BETWEEN 100 and 200 then 1  
+	  when (start_date_annual_plan - start_date_trial_plan) BETWEEN 200 and 400 then 1  
+	  else 1  
+	  end) as days  
+	from t2  
+	         left join t1 on t2.customer_id = t1.customer_id  
+	group by 1;
+	
 	-- How many customers downgraded from a pro monthly to a basic monthly plan in 2020?
+	
+		with t1 as (select customer_id, start_date pro_start_date  
+	            from foodie_fi.subscriptions  
+	            where plan_id = 2),  
+	t2 as (select customer_id, start_date basic_start_date  
+	            from foodie_fi.subscriptions  
+	            where plan_id = 1)  
+	select count(*) from t1 left join t2 on t1.customer_id = t2.customer_id  
+	where basic_start_date > pro_start_date;
